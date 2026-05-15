@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>匿名聊天室</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='grad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%234a90e2;stop-opacity:1' /%3E%3Cstop offset='100%25' style='stop-color:%23667eea;stop-opacity:1' /%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='50' cy='50' r='45' fill='url(%23grad)'/%3E%3Cpath d='M30 40 Q30 35 35 35 L65 35 Q70 35 70 40 L70 55 Q70 60 65 60 L55 60 L45 70 L45 60 L35 60 Q30 60 30 55 Z' fill='white'/%3E%3Ccircle cx='42' cy='48' r='3' fill='%234a90e2'/%3E%3Ccircle cx='58' cy='48' r='3' fill='%234a90e2'/%3E%3C/svg%3E">
+    <script src="https://cdn.bootcdn.net/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/chat.css">
+</head>
+<body>
+    <div class="mobile-overlay" onclick="toggleSidebar()"></div>
+
+    <div class="chat-container">
+        <!-- 顶部标题栏 -->
+        <header class="header">
+            <button class="menu-toggle" onclick="toggleSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+            <h1><i class="fas fa-comments"></i> 匿名聊天室</h1>
+            <div class="online-count">
+                <i class="fas fa-user"></i> <span class="online-text">在线:</span><span id="onlineCount">0</span>
+            </div>
+            <button class="reset-identity-btn" onclick="resetIdentity()" title="重置身份">
+                <i class="fas fa-user-edit"></i>
+            </button>
+        </header>
+
+        <!-- 主内容区 -->
+        <div class="main-content">
+            <!-- 左侧用户列表 -->
+            <aside class="sidebar" id="sidebar">
+                <div class="sidebar-header">
+                    <div class="sidebar-header-title">
+                        <i class="fas fa-users"></i> 在线用户
+                    </div>
+                    <button class="sidebar-close-btn" onclick="toggleSidebar()" title="关闭">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="user-list" id="userList">
+                    <!-- 用户列表动态生成 -->
+                </div>
+                
+                <!-- AI 帮助信息 -->
+                <div class="ai-help-section">
+                    <div class="ai-help-title">
+                        <i class="fas fa-robot"></i> AI 小助手
+                    </div>
+                    <div class="ai-help-content">
+                        <div class="ai-help-item">
+                            <span class="ai-command">@ai</span>
+                            <span class="ai-description">唤醒 AI</span>
+                        </div>
+                        <div class="ai-help-item">
+                            <span class="ai-command">@ai 退出</span>
+                            <span class="ai-description">让AI休息</span>
+                        </div>
+                        <div class="ai-help-item">
+                            <span class="ai-description">💡 60秒无消息自动出题</span>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- 聊天区域 -->
+            <main class="chat-area">
+                <!-- 消息区域 -->
+                <div class="messages-container" id="messagesContainer">
+                    <div class="empty-state">
+                        <i class="fas fa-comment-dots"></i>
+                        <p>欢迎来到匿名聊天室<br>开始聊天吧！</p>
+                    </div>
+                </div>
+
+                <!-- 输入区域 -->
+                <div class="input-area">
+                    <!-- QQ表情选择器 -->
+                    <div class="emoji-picker" id="emojiPicker">
+                        <!-- 表情由JS动态生成 -->
+                    </div>
+
+                    <div class="input-wrapper">
+                        <!-- @用户提示框 -->
+                        <div class="mention-suggestions" id="mentionSuggestions">
+                            <!-- 由 JS 动态生成 -->
+                        </div>
+                        
+                        <div class="input-toolbar">
+                            <button class="toolbar-btn emoji-btn" id="emojiBtn" onclick="toggleEmojiPicker()" title="表情">
+                                <i class="far fa-smile"></i>
+                            </button>
+                            <button class="toolbar-btn" onclick="clearInput()" title="清空">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="input-container">
+                            <textarea 
+                                class="message-input" 
+                                id="messageInput" 
+                                placeholder="输入消息...（发送 @ai 唤醒AI，@ai 退出 让AI休息）"
+                                rows="1"
+                            ></textarea>
+                            <button class="send-button" onclick="sendMessage()">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- 创建用户弹窗 -->
+    <div id="createUserDialog" class="create-user-overlay" style="display: none;">
+        <div class="create-user-dialog">
+            <h2 class="create-user-title"><i class="fas fa-user-plus"></i> 创建您的身份</h2>
+            
+            <div class="form-group">
+                <label class="form-label">昵称</label>
+                <div class="nickname-input-wrapper">
+                    <input type="text" id="nicknameInput" class="nickname-input" placeholder="输入您的昵称" maxlength="10">
+                    <button class="refresh-nickname-btn" onclick="refreshNickname()" title="随机生成昵称">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <div class="avatar-header">
+                    <label class="form-label">选择头像</label>
+                    <button class="refresh-avatar-btn" onclick="refreshAvatars()" title="换一批">
+                        <i class="fas fa-sync-alt"></i> 换一批
+                    </button>
+                </div>
+                <div class="avatar-selector" id="avatarSelector">
+                    <!-- 头像选项由 JS 动态生成 -->
+                </div>
+            </div>
+            
+            <button class="create-user-btn" onclick="createUser()">
+                <i class="fas fa-check-circle"></i> 创建用户
+            </button>
+        </div>
+    </div>
+
+    <!-- 引用外部 JavaScript 文件 -->
+    <script src="/js/chat.js"></script>
+</body>
+</html>
